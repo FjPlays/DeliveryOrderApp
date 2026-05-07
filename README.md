@@ -1,76 +1,94 @@
 # Delivery Order App
 
-Take-home assessment project. A simple delivery tracking app where customers can see their orders and drivers can update the status.
+Simple delivery tracking app built for a take-home assessment. Customers can view their orders and filter by status. Drivers can update the order status from the detail screen.
 
 ---
 
 ## Running the app
 
-1. Clone the repo and open it in Android Studio
-2. Let Gradle sync finish
-3. Run on any emulator or device (API 24+)
+1. Clone the repo and open in Android Studio
+2. Wait for Gradle sync
+3. Run on emulator or device (API 24+)
 
-No setup needed — it connects to a MockAPI.io endpoint I set up with sample order data.
+Uses MockAPI.io as the backend — no extra setup needed.
 
 ---
 
-## Running the tests
+## Running tests
 
 ```bash
 ./gradlew test
 ```
-- CI also runs tests automatically on every push via GitHub Actions.
+
+GitHub Actions runs this automatically on every push.
 
 ---
 
-## What it does
+## Backend
 
-- Lists all orders, can filter by status (Pending / In Transit / Delivered)
-- Tap an order to see the full details
-- Update the status from the detail screen
-- List auto-refreshes when you go back so changes show up immediately
+Set up MockAPI.io with an `orders` resource. Endpoints used:
+
+- `GET /orders` — list orders
+- `GET /orders?customerId=x` — filter by customer
+- `GET /orders/:id` — order detail
+- `POST /orders` — create order
+- `PUT /orders/:id` — update status
 
 ---
 
 ## Stack
 
-I went with:
-- **Jetpack Compose + Material3** for UI
-- **Ktor** for HTTP — felt more natural than Retrofit for a Kotlin-first project
-- **Koin** for DI — less setup overhead than Hilt for a project this size
-- **Kotlinx Serialization** for JSON parsing
-- **MVVM + Clean Architecture** — domain, data, and presentation layers kept separate
-- **StateFlow + UiState** — single state object per screen, easier to reason about
+- Jetpack Compose + Material3
+- Ktor — coroutine-native, pairs well with Kotlinx Serialization
+- Koin — simpler setup than Hilt for a project this size
+- MVVM + Clean Architecture
+- StateFlow for UI state
 
 ---
 
-## Structure
+## Architecture
 
-Went with a standard clean arch setup:
+Went with MVVM and split into three layers — domain, data, and presentation. Domain has no Android dependencies so the logic is easy to unit test. Each screen has a single UiState data class exposed through a ViewModel to keep state consistent.
 
-```
-data/        → DTOs, Ktor API service, repository impl
-domain/      → models, repository interface, use cases
-presentation → screens, viewmodels, components
-di/          → Koin modules
-```
+Chose Ktor over Retrofit because it's Kotlin-first and doesn't need extra converters. Koin over Hilt was a time trade-off — Hilt would be better for a team project.
 
 ---
 
-## Decisions I made
+## Trade-offs
 
-**Ktor over Retrofit** — wanted to keep things idiomatic Kotlin. Ktor plays nicer with coroutines and doesn't need a separate serialization converter.
+Kept the focus on the core flow — list, filter, detail, status update. What I left out due to time:
 
-**Koin over Hilt** — faster to wire up for a scoped project like this. If this were a team codebase I'd probably lean Hilt for the compile-time checks.
-
-**No Room/caching** — given the time constraint I skipped local persistence. The app always fetches fresh from the API which is fine for a mock setup.
+- No local caching, always fetches from API
+- No pagination
+- No Create Order UI (API supports it, just no screen for it)
+- Base URL is hardcoded — would move to `local.properties` in production
 
 ---
 
-## What I'd add given more time
+## Testing
 
-- Local caching with Room so it works offline
-- Proper pagination instead of loading everything at once
-- A "Create Order" screen (the API supports it, just didn't build the UI)
-- Environment-based config so the base URL isn't hardcoded
-- Better error types — right now it just surfaces the raw exception message
+Focused tests on the use case and ViewModel layers since that's where the logic lives. Covered the happy path, filtering, and error states.
+
+---
+
+## Real-time driver tracking
+
+If I had more time I'd add a live map using Google Maps SDK. The detail screen would have a "Track Driver" button opening a map with the driver's location updating in real-time via WebSockets — Ktor has a WebSocket client that would wire into the existing setup cleanly. A simpler fallback would be polling the API every few seconds using a coroutine loop.
+
+---
+
+## What I'd add for production
+
+- Room for offline caching
+- Paging 3 for large order lists
+- Crashlytics for monitoring
+- Typed error handling instead of raw exception messages
+- CI extended to handle signing and Play Store deployment
+- SSL pinning and API key management for security
+- ProGuard rules to obfuscate the release build
+
+---
+
+Given the 3-4 hour timeframe I kept the scope tight to avoid running into issues
+I couldn't fix in time. The main features from the requirements are all covered —
+order list with filtering, order detail, and status updates.
